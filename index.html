@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<div id=status></div>
+
+<script>
+    var sockets = [];
+    var found = false;
+    var inFlight = 0;
+    var maxInFlight = 200;
+
+    function testDialer(i) {
+        var socket = new WebSocket(`ws://localhost:${i}/websocket`);
+
+        inFlight += 1;
+        socket.onclose = () => {
+            inFlight -= 1;
+        };
+
+        socket.onmessage = (e) => {
+            found = [i, e.data];
+            socket.onmessage = null;
+            socket.close();
+        };
+
+        sockets.push(socket);
+    }
+
+    var i = 1;
+    var statusDiv = document.getElementById("status");
+
+    window.setInterval(() => {
+        if (found) {
+            statusDiv.innerHTML = `done, found an attempt at port ${found[0]} to connect to ${found[1]}`;
+            return;
+        }
+
+        for (; i < 65536 && inFlight < maxInFlight; i++) {
+            testDialer(i);
+        }
+
+        statusDiv.innerHTML = `scanning all ports, ${i} done, ${inFlight} concurrent attempts`;
+    }, 100);
+</script>
+
